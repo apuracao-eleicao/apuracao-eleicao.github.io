@@ -333,7 +333,9 @@ function colorirGov(un){
 const pad = ele => 'e00' + ele;
 const caminhoPres = (ele, uf) => '/oficial/' + CICLO + '/' + ele + '/dados/' + uf.toLowerCase() + '/' + uf.toLowerCase() + '-c0001-' + pad(ele) + '-u.json';
 const caminhoGov = (ele, uf) => '/oficial/' + CICLO + '/' + ele + '/dados/' + uf.toLowerCase() + '/' + uf.toLowerCase() + '-c0003-' + pad(ele) + '-u.json';
+const ausentes = {};   // arquivos que deram 404: o TSE pode bloquear o IP com muitos 404, então espera antes de tentar de novo
 async function buscar(caminho){
+  if (ausentes[caminho] && Date.now() < ausentes[caminho]) throw new Error(caminho.split('/').slice(-1)[0] + ' (ainda não publicado)');
   /* tenta o TSE e, se falhar (rede, CORS ou erro), a cópia local em ./dados; a próxima rodada tenta o TSE de novo */
   const urls = [TSE + caminho, './dados' + caminho];
   let motivo = 'rede/CORS';
@@ -343,7 +345,7 @@ async function buscar(caminho){
         const r = await fetch(urls[i], { cache: 'no-cache' });
         if (r.ok) return await r.json();
         motivo = 'HTTP ' + r.status;
-        if (r.status === 404) break;   // arquivo ainda não existe: não adianta repetir
+        if (r.status === 404){ ausentes[caminho] = Date.now() + 180000; break; }   // arquivo ainda não existe: não adianta repetir
       } catch (err){ motivo = 'rede/CORS'; }
     }
     if (motivo === 'HTTP 404') break;
