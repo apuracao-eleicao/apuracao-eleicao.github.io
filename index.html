@@ -738,7 +738,7 @@ function ytLigar(recarregar){
   });
 }
 function ytPausar(){ if (yt && yt.pauseVideo) yt.pauseVideo(); clearTimeout(ytTimer); }
-const ZENO_URL = 'https://zeno.fm/player/paredao-piseiro';
+const ZENO_URL = 'https://zeno.fm/player/paredao-piseiro?autoplay=true';
 function zenoLigar(){ ytCard.classList.remove('mini'); document.getElementById('zMin').hidden = false; const z = document.getElementById('zp'); document.getElementById('ytp').style.display = 'none'; z.hidden = false; if (!z.src || z.src === 'about:blank') z.src = ZENO_URL; ytCard.hidden = false; rTrk.textContent = 'Rádio Paredão Piseiro: aperte play no player'; }
 function zenoParar(){ ytCard.classList.remove('mini'); document.getElementById('zMin').hidden = true; const z = document.getElementById('zp'); z.removeAttribute('src'); z.hidden = true; document.getElementById('ytp').style.display = ''; ytCard.hidden = true; }
 function ligar(){ if (fonte === 'zeno') zenoLigar(); else if (fonte === 'yt') ytLigar(false); else if (fonte === 'lista') ligarLista(); else ligarSintese(); }
