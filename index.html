@@ -57,6 +57,8 @@ h1{font-family:var(--display); font-weight:700; font-size:clamp(34px,6vw,52px); 
 .seg .btn:last-child{border-radius:0 6px 6px 0}
 .ctl-label{color:var(--muted); font-size:13px}
 .chip{margin-left:auto; font-size:12px; font-weight:600; letter-spacing:.06em; text-transform:uppercase; color:var(--muted); border:1px solid var(--line); border-radius:4px; padding:4px 8px}
+.online{display:none; font-size:12px; font-weight:600; letter-spacing:.04em; color:var(--muted); font-variant-numeric:tabular-nums; white-space:nowrap}
+.online.on{display:inline-block}
 .chip.demo{color:var(--fg); border:1px dashed var(--fg)}
 .banner{margin:0 0 16px; padding:10px 14px; border-radius:6px; border:1px solid var(--live); color:var(--fg); background:var(--panel); font-size:14px}
 
@@ -246,6 +248,7 @@ h1{font-size:clamp(26px,3.4vw,40px)}
         </div>
       </span>
       <span class="chip" id="chip">Fonte: TSE</span>
+      <span class="online" id="online" title="Pessoas acompanhando agora"></span>
       <span class="status">
         <span class="live off" id="live"><i></i><span id="liveTxt">CARREGANDO</span></span>
         <span class="clock" id="clock">--:--:--</span>
@@ -785,4 +788,23 @@ if (DEMO){
 } else {
   desenhar(); trocarTurno(2);
 }
+
+/* ---------- PESSOAS ACOMPANHANDO AGORA (contador anônimo no Supabase; se falhar, some) ---------- */
+(function(){
+  if (DEMO) return;
+  const URL_ = 'https://girwflagelwgcjulifzn.supabase.co/rest/v1/rpc/apuracao_ping', KEY = 'sb_publishable_ofPHBsu9Kr5-lZjyZDjuRw_S9S-n2Bo';
+  const el = document.getElementById('online');
+  const id = (crypto.randomUUID ? crypto.randomUUID() : '10000000-1000-4000-8000-100000000000'.replace(/[018]/g, c => (c ^ Math.random() * 16 >> c / 4).toString(16)));
+  async function ping(){
+    if (document.hidden) return;
+    try {
+      const r = await fetch(URL_, { method: 'POST', headers: { apikey: KEY, 'Content-Type': 'application/json' }, body: JSON.stringify({ p_id: id }) });
+      if (!r.ok) throw 0;
+      const n = await r.json();
+      if (typeof n === 'number' && n > 0){ el.textContent = '\u{1F465} ' + new Intl.NumberFormat('pt-BR').format(n) + ' ao vivo'; el.classList.add('on'); }
+    } catch (e){ el.classList.remove('on'); }
+  }
+  ping(); setInterval(ping, 60000 + Math.random() * 5000);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) ping(); });
+})();
 </script>
