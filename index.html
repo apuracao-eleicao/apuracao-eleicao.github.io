@@ -92,7 +92,7 @@ h1{font-family:var(--display); font-weight:700; font-size:clamp(34px,6vw,52px); 
 .legend{display:flex; flex-wrap:wrap; gap:6px 18px; padding:8px 4px 2px; font-size:13px; color:var(--muted)}
 .legend span{display:inline-flex; align-items:center; gap:6px}
 .sw{width:12px; height:12px; border-radius:2px; display:inline-block}
-.ramp{width:60px; height:8px; border-radius:2px; background:linear-gradient(90deg, color-mix(in srgb, var(--fg) 12%, transparent), var(--fg))}
+.ramp{width:60px; height:8px; border-radius:2px; background:linear-gradient(90deg, var(--line), var(--fg))}
 .gdot{width:8px; height:8px; border-radius:50%; background:var(--fg); display:inline-block}
 
 .panel{background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:18px; min-width:0}
@@ -295,11 +295,22 @@ const PAL = PALETAS[PALETA];
   s.textContent = ':root{--lula:' + c.lula + ';--bolso:' + c.bolso + '}@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--lula:' + e.lula + ';--bolso:' + e.bolso + '}}:root[data-theme="dark"]{--lula:' + e.lula + ';--bolso:' + e.bolso + '}';
   document.body.appendChild(s);
 })();
+function rgbDe(v){
+  v = String(v || '').trim(); let m;
+  if ((m = /^#([0-9a-f]{6})$/i.exec(v))){ const n = parseInt(m[1], 16); return [n >> 16 & 255, n >> 8 & 255, n & 255]; }
+  if ((m = /^#([0-9a-f]{3})$/i.exec(v))) return m[1].split('').map(h => parseInt(h + h, 16));
+  if ((m = /rgba?\(\s*(\d+)[\s,]+(\d+)[\s,]+(\d+)/.exec(v))) return [+m[1], +m[2], +m[3]];
+  return null;
+}
+function valorVar(cor){ const m = /^var\((--[\w-]+)\)$/.exec(cor); return m ? getComputedStyle(document.documentElement).getPropertyValue(m[1]) : cor; }
+/* a mistura de cores é feita aqui em JS, para funcionar também em navegadores antigos, como os de TV */
 function corMapa(cor, f){
-  const st = PAL.stops, p = f < 0.5 ? st[0] + (st[1] - st[0]) * (f / 0.5) : st[1] + (st[2] - st[1]) * ((f - 0.5) / 0.5);
-  let c = 'color-mix(in srgb, ' + cor + ' ' + p.toFixed(0) + '%, var(--panel))';
-  if (PAL.fundo && f > 0.5) c = 'color-mix(in srgb, ' + c + ' ' + (100 - (f - 0.5) * 2 * 24).toFixed(0) + '%, #000)';
-  return c;
+  const st = PAL.stops, p = (f < 0.5 ? st[0] + (st[1] - st[0]) * (f / 0.5) : st[1] + (st[2] - st[1]) * ((f - 0.5) / 0.5)) / 100;
+  const base = rgbDe(valorVar(cor)), fundo = rgbDe(valorVar('var(--panel)'));
+  if (!base || !fundo) return cor;
+  let c = base.map((x, i) => x * p + fundo[i] * (1 - p));
+  if (PAL.fundo && f > 0.5){ const q = 1 - (f - 0.5) * 2 * 0.24; c = c.map(x => x * q); }
+  return 'rgb(' + c.map(x => Math.round(x)).join(',') + ')';
 }
 const OUTROS = ['--o1','--o2','--o0','--o3','--o4'];
 const UFS = Object.keys(GEO.states);
@@ -810,4 +821,7 @@ if (DEMO){
 
 /* relógio corrido: marca a hora atual a cada segundo (os dados são lidos a cada ~45 s) */
 (function(){ const c = document.getElementById('clock'); function t(){ c.textContent = new Date().toLocaleTimeString('pt-BR'); } t(); setInterval(t, 1000); })();
+
+/* tema claro/escuro mudou no aparelho: repinta o mapa */
+try { window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { if (typeof desenhar === 'function') desenhar(); }); } catch (e){}
 </script>
