@@ -333,19 +333,21 @@ function colorirGov(un){
 const pad = ele => 'e00' + ele;
 const caminhoPres = (ele, uf) => '/oficial/' + CICLO + '/' + ele + '/dados/' + uf.toLowerCase() + '/' + uf.toLowerCase() + '-c0001-' + pad(ele) + '-u.json';
 const caminhoGov = (ele, uf) => '/oficial/' + CICLO + '/' + ele + '/dados/' + uf.toLowerCase() + '/' + uf.toLowerCase() + '-c0003-' + pad(ele) + '-u.json';
-let usarEspelho = false;
 async function buscar(caminho){
-  const urls = usarEspelho ? ['./dados' + caminho] : [TSE + caminho, './dados' + caminho];
+  /* tenta o TSE e, se falhar (rede, CORS ou erro), a cópia local em ./dados; a próxima rodada tenta o TSE de novo */
+  const urls = [TSE + caminho, './dados' + caminho];
   let motivo = 'rede/CORS';
-  for (let i = 0; i < urls.length; i++){
-    try {
-      const r = await fetch(urls[i], { cache: 'no-cache' });
-      if (r.ok) return await r.json();
-      motivo = 'HTTP ' + r.status;
-    } catch (err){
-      motivo = 'rede/CORS';
-      if (i === 0 && !usarEspelho){ usarEspelho = true; }
+  for (let tent = 0; tent < 2; tent++){
+    for (let i = 0; i < urls.length; i++){
+      try {
+        const r = await fetch(urls[i], { cache: 'no-cache' });
+        if (r.ok) return await r.json();
+        motivo = 'HTTP ' + r.status;
+        if (r.status === 404) break;   // arquivo ainda não existe: não adianta repetir
+      } catch (err){ motivo = 'rede/CORS'; }
     }
+    if (motivo === 'HTTP 404') break;
+    await new Promise(ok => setTimeout(ok, 1500));   // uma nova tentativa rápida para falhas passageiras
   }
   throw new Error(caminho.split('/').slice(-1)[0] + ' (' + motivo + ')');
 }
