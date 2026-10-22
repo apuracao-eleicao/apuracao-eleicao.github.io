@@ -585,7 +585,7 @@ function desenhar(){
   const live = document.getElementById('live');
   live.classList.toggle('off', !br || fim || espera || paused);
   document.getElementById('liveTxt').textContent = !br ? 'CARREGANDO' : fim ? 'TOTALIZADA' : espera ? 'AGUARDANDO' : paused ? 'PAUSADA' : 'AO VIVO';
-  document.getElementById('clock').textContent = agora.toLocaleTimeString('pt-BR');
+  document.getElementById('clock').title = 'Última leitura dos dados: ' + agora.toLocaleTimeString('pt-BR');
 }
 
 /* ---------- CICLO ---------- */
@@ -807,4 +807,7 @@ if (DEMO){
   ping(); setInterval(ping, 180000 + Math.random() * 10000);
   document.addEventListener('visibilitychange', () => { if (!document.hidden) ping(); });
 })();
+
+/* relógio corrido: marca a hora atual a cada segundo (os dados são lidos a cada ~45 s) */
+(function(){ const c = document.getElementById('clock'); function t(){ c.textContent = new Date().toLocaleTimeString('pt-BR'); } t(); setInterval(t, 1000); })();
 </script>
