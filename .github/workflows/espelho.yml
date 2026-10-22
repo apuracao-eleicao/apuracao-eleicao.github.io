@@ -2,7 +2,7 @@
 # Copia os JSON do TSE para a pasta dados/ a cada ~5 min; o index.html lê dali sozinho.
 name: espelho-tse
 on:
-  schedule: [{ cron: '*/5 * * * *' }]
+  # agendamento desligado: só rode manualmente (Actions > espelho-tse > Run workflow) se o TSE bloquear a leitura direta
   workflow_dispatch:
 permissions: { contents: write }
 jobs:

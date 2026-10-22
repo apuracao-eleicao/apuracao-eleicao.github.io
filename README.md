@@ -15,7 +15,7 @@ Para ver o layout sem dados reais: `.../?demo`.
 - Cores: `--lula` (vermelho) e `--bolso` (azul) no CSS. A cor é decidida pelo nome do candidato (contém "Lula" ou "Bolsonaro").
 
 ## Se aparecer erro de leitura do TSE (CORS)
-Ative o workflow `.github/workflows/espelho.yml`: ele copia os arquivos para `dados/` a cada ~5 min
+O workflow `.github/workflows/espelho.yml` vem com o agendamento desligado. Para usar: peça para religar o `schedule` (a cada ~5 min); ele copia os arquivos para `dados/`
 e a página passa a ler de lá automaticamente (atualização mais lenta).
 
 ## Rádio (música ambiente)
