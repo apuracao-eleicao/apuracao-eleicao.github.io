@@ -804,7 +804,7 @@ if (DEMO){
       if (typeof n === 'number' && n > 0){ el.textContent = '\u{1F465} ' + new Intl.NumberFormat('pt-BR').format(n) + ' ao vivo'; el.classList.add('on'); }
     } catch (e){ el.classList.remove('on'); }
   }
-  ping(); setInterval(ping, 60000 + Math.random() * 5000);
+  ping(); setInterval(ping, 180000 + Math.random() * 10000);
   document.addEventListener('visibilitychange', () => { if (!document.hidden) ping(); });
 })();
 </script>
