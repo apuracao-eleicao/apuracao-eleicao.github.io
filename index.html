@@ -116,7 +116,7 @@ h1{font-family:var(--display); font-weight:700; font-size:clamp(34px,6vw,52px); 
 .kv{display:grid; grid-template-columns:1fr auto; gap:4px 12px; margin:0; font-size:14px; font-variant-numeric:tabular-nums}
 .kv dt{color:var(--muted)} .kv dd{margin:0; text-align:right; font-weight:500}
 .list{max-height:360px; overflow-y:auto; margin:8px -6px 0; padding:0 6px}
-.row{display:grid; grid-template-columns:44px 1fr 52px; gap:10px; align-items:center; width:100%; font:inherit; color:inherit; background:none; border:0; border-bottom:1px solid var(--line); padding:7px 2px; text-align:left; cursor:pointer}
+.row{display:grid; grid-template-columns:52px 1fr 52px; gap:10px; align-items:center; width:100%; font:inherit; color:inherit; background:none; border:0; border-bottom:1px solid var(--line); padding:7px 2px; text-align:left; cursor:pointer}
 .row:hover{background:var(--soft)}
 .row .uf{font-family:var(--display); font-weight:700; font-size:18px; display:flex; align-items:center; gap:6px}
 .row .dot{width:8px; height:8px; border-radius:50%; flex:none}
@@ -169,14 +169,16 @@ h1{font-size:clamp(26px,3.4vw,40px)}
 /* ---- v4: sem quadrado de foco, regiões, YouTube ---- */
 #map path{outline:none; vector-effect:non-scaling-stroke}
 #map path.dim{opacity:.16}
-#map text{font-size:calc(12.5px*var(--z,1)); stroke-width:calc(3px*var(--z,1))}
+#map text{font-size:calc(13px*var(--z,1)); stroke-width:calc(3px*var(--z,1))}
 #map text.sm{font-size:calc(8px*var(--z,1))}
 #map circle{r:calc(3px*var(--z,1)); stroke-width:calc(1.5px*var(--z,1))}
-#map text.pc{font-size:calc(10.5px*var(--z,1)); font-weight:700; fill:var(--muted); stroke-width:calc(2.6px*var(--z,1)); font-variant-numeric:tabular-nums}
-#map text.pc.sm{font-size:calc(6.5px*var(--z,1))}
+#map text.pc{font-size:calc(14px*var(--z,1)); font-weight:800; fill:var(--fg); stroke-width:calc(2.6px*var(--z,1)); font-variant-numeric:tabular-nums}
+#map text.pc.sm{font-size:calc(8.5px*var(--z,1))}
 #map text.pc.dim{opacity:.2}
 #map text.mar{text-anchor:start}
-#map tspan.pc{font-size:.88em; font-weight:700; fill:var(--muted)}
+#map text.ext{pointer-events:auto; cursor:pointer; outline:none}
+#map text.ext.sel{text-decoration:underline}
+#map tspan.pc{font-size:1.05em; font-weight:800; fill:var(--fg)}
 #map line.lead{stroke:var(--muted); stroke-width:1; vector-effect:non-scaling-stroke; opacity:.7; pointer-events:none}
 #map line.lead.dim{opacity:.15}
 #map text.dim,#map circle.dim{opacity:.2}
@@ -321,6 +323,7 @@ function corMapa(cor, f){
 }
 const OUTROS = ['--o1','--o2','--o0','--o3','--o4'];
 const UFS = Object.keys(GEO.states);
+const nomeUF = uf => uf === 'ZZ' ? 'Exterior' : GEO.states[uf].name;
 const REGIOES = { 'Norte': ['AC','AM','AP','PA','RO','RR','TO'], 'Nordeste': ['AL','BA','CE','MA','PB','PE','PI','RN','SE'], 'Centro-Oeste': ['DF','GO','MS','MT'], 'Sudeste': ['ES','MG','RJ','SP'], 'Sul': ['PR','RS','SC'] };
 
 /* ---------- UTIL ---------- */
@@ -379,13 +382,15 @@ async function carregarTSE(turno){
   const jobs = [
     buscar(caminhoPres(el.fed, 'BR')).then(j => ['br', parseUnit(j)]),
     ...UFS.map(uf => buscar(caminhoPres(el.fed, uf)).then(j => ['uf:' + uf, parseUnit(j)])),
-    ...GOV_UFS.map(uf => buscar(caminhoGov(el.est, uf)).then(j => ['gov:' + uf, parseUnit(j)]))
+    ...GOV_UFS.map(uf => buscar(caminhoGov(el.est, uf)).then(j => ['gov:' + uf, parseUnit(j)])),
+    buscar(caminhoPres(el.fed, 'ZZ')).then(j => ['uf:ZZ', parseUnit(j)]).catch(() => ['uf:ZZ', null])   // exterior: se faltar, só some da lista
   ];
   const res = await Promise.allSettled(jobs);
   const out = { pres: { br: null, uf: {} }, gov: {}, falhas: 0, lista: [] };
   res.forEach(r => {
     if (r.status !== 'fulfilled'){ out.falhas++; out.lista.push(r.reason && r.reason.message ? r.reason.message : '?'); return; }
     const [k, un] = r.value;
+    if (!un) return;
     if (k === 'br'){ colorirPres(un); out.pres.br = un; }
     else if (k.startsWith('uf:')){ colorirPres(un); out.pres.uf[k.slice(3)] = un; }
     else { colorirGov(un); out.gov[k.slice(4)] = un; }
@@ -464,12 +469,27 @@ function montarMapa(){
       const ln = document.createElementNS(NS, 'line'); ln.setAttribute('x1', st.cx); ln.setAttribute('y1', st.cy); ln.setAttribute('x2', mar[0] - 2); ln.setAttribute('y2', mar[1]); ln.classList.add('lead'); gl.insertBefore(ln, gl.firstChild); linhaEl[uf] = ln;
       const q = document.createElementNS(NS, 'tspan'); q.setAttribute('dx', '0.35em'); q.classList.add('pc'); t.appendChild(q); pcEl[uf] = q;
     } else {
-      const q = document.createElementNS(NS, 'text'); q.setAttribute('x', st.cx); q.setAttribute('y', st.cy); q.setAttribute('dy', '1.3em'); q.classList.add('pc'); if (uf === 'DF') q.classList.add('sm'); gl.appendChild(q); pcEl[uf] = q;
+      const q = document.createElementNS(NS, 'text'); q.setAttribute('x', st.cx); q.setAttribute('y', st.cy); q.setAttribute('dy', '1.15em'); q.classList.add('pc'); if (uf === 'DF') q.classList.add('sm'); gl.appendChild(q); pcEl[uf] = q;
     }
     if (GOV_UFS.includes(uf)){
       const c = document.createElementNS(NS, 'circle'); c.setAttribute('cx', st.cx); c.setAttribute('cy', MAR[uf] ? st.cy : st.cy - (uf === 'DF' ? 7 : 11)); c.setAttribute('r', 3); gl.appendChild(c); dotEl[uf] = c;
     }
   });
+}
+let extEl = null, extPc = null;
+function montarExt(){
+  const gl = svg.lastChild; extEl = document.createElementNS(NS, 'text'); extEl.setAttribute('x', 548); extEl.setAttribute('y', 560); extEl.classList.add('mar', 'ext'); extEl.setAttribute('role', 'button'); extEl.setAttribute('tabindex', '0'); extEl.textContent = 'EXT';
+  extPc = document.createElementNS(NS, 'tspan'); extPc.setAttribute('dx', '0.35em'); extPc.classList.add('pc'); extEl.appendChild(extPc);
+  extEl.addEventListener('click', () => selecionar('ZZ')); extEl.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' '){ e.preventDefault(); selecionar('ZZ'); } });
+  gl.appendChild(extEl);
+}
+function pintarExt(){
+  if (!extEl) montarExt();
+  const un = D && D.pres.uf.ZZ;
+  extEl.style.display = un ? '' : 'none';
+  if (!un) return;
+  extPc.textContent = regiao ? pct(un.f * 100) : (un.f >= 0.9999 ? '100%' : Math.floor(un.f * 100) + '%');
+  extEl.classList.toggle('dim', !!regiao); extEl.classList.toggle('sel', sel === 'ZZ');
 }
 function pintar(){
   UFS.forEach(uf => {
@@ -483,6 +503,7 @@ function pintar(){
     pcEl[uf].classList.toggle('dim', fora); if (linhaEl[uf]) linhaEl[uf].classList.toggle('dim', fora);
     p.classList.toggle('dim', fora); lblEl[uf].classList.toggle('dim', fora); if (dotEl[uf]) dotEl[uf].classList.toggle('dim', fora);
   });
+  pintarExt();
 }
 const tip = document.getElementById('tip');
 function dica(e, uf){
@@ -540,7 +561,7 @@ function painel(){
     const un = D.pres.uf[sel], g = D.gov[sel];
     panel.innerHTML =
       '<button class="btn back" type="button" data-focus="back" data-act="back">← Todos os estados</button>' +
-      '<p class="eyebrow">Estado</p><div class="state-name">' + GEO.states[sel].name + '</div>' +
+      '<p class="eyebrow">' + (sel === 'ZZ' ? 'Voto no exterior' : 'Estado') + '</p><div class="state-name">' + nomeUF(sel) + '</div>' +
       (un ? '<h3>Presidente · ' + tl + '</h3>' + blocoApuracao(un) + linhas(un, 6) +
         '<dl class="kv"><dt>Votos válidos</dt><dd>' + nf.format(un.vv || soma(un.votos)) + '</dd><dt>Brancos</dt><dd>' + nf.format(un.vb) + '</dd><dt>Nulos</dt><dd>' + nf.format(un.vn) + '</dd><dt>Eleitorado</dt><dd>' + nf.format(un.eleit) + '</dd></dl>'
         : '<p class="meta">Sem dados para este estado agora.</p>') +
@@ -549,9 +570,9 @@ function painel(){
     const ordem = (regiao ? REGIOES[regiao] : UFS).map(uf => ({ uf, un: D.pres.uf[uf] })).sort((a, b) => (b.un ? b.un.eleit : 0) - (a.un ? a.un.eleit : 0));
     panel.innerHTML =
       '<p class="eyebrow">Estados · presidente' + (regiao ? ' · ' + regiao : '') + '</p>' +
-      '<div class="list">' + ordem.map(({ uf, un }) => {
+      '<div class="list">' + ordem.concat(!regiao && D.pres.uf.ZZ ? [{ uf: 'ZZ', un: D.pres.uf.ZZ }] : []).map(({ uf, un }) => {
         const l = lider(un);
-        return '<button class="row" type="button" data-act="uf" data-uf="' + uf + '" data-focus="row-' + uf + '"><span class="uf"><span class="dot" style="background:' + (l ? l.cor : 'var(--none)') + '"></span>' + uf + '</span>' +
+        return '<button class="row" type="button" data-act="uf" data-uf="' + uf + '" data-focus="row-' + uf + '"><span class="uf"><span class="dot" style="background:' + (l ? l.cor : 'var(--none)') + '"></span>' + (uf === 'ZZ' ? 'EXT' : uf) + '</span>' +
           '<span class="mini"><b style="width:' + (un ? (un.f * 100).toFixed(1) : 0) + '%"></b></span><span class="p">' + (un ? pct(un.f * 100) : '–') + '</span></button>';
       }).join('') + '</div>' +
       '<p class="foot">Clique em um estado no mapa ou na lista. Nos estados marcados com ponto no mapa (' + GOV_UFS.join(', ') + ') o painel também mostra o governador.</p>';
