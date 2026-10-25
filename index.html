@@ -562,6 +562,7 @@ function painel(){
     panel.innerHTML =
       '<button class="btn back" type="button" data-focus="back" data-act="back">← Todos os estados</button>' +
       '<p class="eyebrow">' + (sel === 'ZZ' ? 'Voto no exterior' : 'Estado') + '</p><div class="state-name">' + nomeUF(sel) + '</div>' +
+      (sel === 'ZZ' && un && un.f < 0.0001 ? '<p class="meta">O TSE só soma o exterior na apuração oficial a partir das 17h (Brasília). Antes disso, os boletins de urna aparecem um a um no portal do TSE e não entram nesta contagem.</p>' : '') +
       (un ? '<h3>Presidente · ' + tl + '</h3>' + blocoApuracao(un) + linhas(un, 6) +
         '<dl class="kv"><dt>Votos válidos</dt><dd>' + nf.format(un.vv || soma(un.votos)) + '</dd><dt>Brancos</dt><dd>' + nf.format(un.vb) + '</dd><dt>Nulos</dt><dd>' + nf.format(un.vn) + '</dd><dt>Eleitorado</dt><dd>' + nf.format(un.eleit) + '</dd></dl>'
         : '<p class="meta">Sem dados para este estado agora.</p>') +
