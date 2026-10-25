@@ -185,6 +185,8 @@ h1{font-size:clamp(26px,3.4vw,40px)}
 #map line.lead.dim{opacity:.15}
 #map text.dim,#map circle.dim{opacity:.2}
 .regs{display:flex; flex-wrap:wrap; gap:5px; padding:0 0 8px}
+.hero .proj,.proj{margin:6px 0 0; font-size:13px; color:var(--muted)}
+.proj b{color:var(--fg)} .proj span{white-space:nowrap}
 .btn.sm{padding:5px 8px; font-size:14px; white-space:nowrap}
 .btn.sm .rp{font-weight:800; font-variant-numeric:tabular-nums; margin-left:2px}
 .radio{position:relative}
@@ -405,6 +407,17 @@ async function carregarTSE(turno){
   return out;
 }
 
+/* ---------- 1º TURNO (base da projeção; carregado uma vez) ---------- */
+let PRI = null, priCarregando = false;
+async function carregarPrimeiro(){
+  if (PRI || priCarregando) return; priCarregando = true;
+  const el = ELEICOES[1], ufs = UFS.concat(['ZZ']);
+  const res = await Promise.allSettled(ufs.map(uf => buscar(caminhoPres(el.fed, uf)).then(j => [uf, parseUnit(j)])));
+  const p = {}; res.forEach(r => { if (r.status === 'fulfilled') p[r.value[0]] = r.value[1]; });
+  priCarregando = false;
+  if (Object.keys(p).length > 20){ PRI = p; desenhar(); }
+}
+
 /* ---------- MODO DEMONSTRAÇÃO (dados fictícios) ---------- */
 const ELEIT = { AC:.60,AL:2.3,AM:2.6,AP:.55,BA:11.5,CE:6.6,DF:2.2,ES:3.0,GO:5.0,MA:4.9,MG:16.3,MS:2.0,MT:2.6,PA:6.0,PB:3.2,PE:6.9,PI:2.5,PR:8.5,RJ:12.7,RN:2.5,RO:1.2,RR:.40,RS:8.5,SC:5.6,SE:1.6,SP:34.6,TO:1.1 };
 function hash(s){ let h = 2166136261; for (const c of s){ h ^= c.charCodeAt(0); h = Math.imul(h, 16777619); } return h >>> 0; }
@@ -528,6 +541,41 @@ function lado(c, tot, cls){
   return '<div class="side ' + cls + '" style="--cor:' + c.cor + '"><div class="nm">' + tc(c.nome) + '</div>' +
     '<div class="pc">' + pct(p, 2).replace('%', '') + '<small>%</small></div><div class="vt">' + nf.format(c.v) + ' votos · ' + (c.partido || '') + '</div></div>';
 }
+/* Projeção: para cada estado (e exterior), votos que faltam = (1 - seções apuradas) x votos válidos do 1º turno x ritmo de comparecimento;
+   a divisão do que falta mistura a apuração de hoje (peso = % apurado) com o 1º turno + variação nacional (peso = o que falta). */
+function projecao(){
+  if (!D || turno !== 2 || !PRI) return null;
+  const ds = UFS.concat(['ZZ']).map(uf => {
+    const u = D.pres.uf[uf], p = PRI[uf]; if (!u || !p) return null;
+    const L = u.votos.find(isLula), B = u.votos.find(isBolso), L1 = p.votos.find(isLula), B1 = p.votos.find(isBolso);
+    if (!L || !B || !L1 || !B1 || !(L1.v + B1.v)) return null;
+    const v2 = L.v + B.v;
+    return { u, L: L.v, B: B.v, v2, v1: soma(p.votos), s2: v2 ? L.v / v2 : null, s1: L1.v / (L1.v + B1.v) };
+  }).filter(Boolean);
+  if (ds.length < 20) return null;
+  const base = ds.filter(d => d.u.f >= 0.3 && d.v2 > 0);
+  const den = base.reduce((a, d) => a + d.v2, 0);
+  const swing = den ? base.reduce((a, d) => a + d.v2 * (d.s2 - d.s1), 0) / den : 0;
+  const dcomp = base.reduce((a, d) => a + d.v1 * d.u.f, 0), t = dcomp ? den / dcomp : 1;
+  let Lc = 0, Bc = 0, rem = 0, Lm = 0, Lp = 0, Lh = 0;
+  ds.forEach(d => {
+    const f = Math.min(1, d.u.f), r = Math.max(0, (1 - f) * d.v1 * t), prior = Math.min(1, Math.max(0, d.s1 + swing)), parc = d.s2 == null ? prior : d.s2;
+    Lc += d.L; Bc += d.B; rem += r;
+    Lm += r * (f * parc + (1 - f) * prior); Lp += r * parc; Lh += r * prior;
+  });
+  const proj = x => { const Lf = Lc + x, Bf = Lc + Bc + rem - Lf; return Lf / (Lf + Bf); };
+  const vals = [proj(Lp), proj(Lh)];
+  return { L: proj(Lm), min: Math.min(...vals), max: Math.max(...vals), rem, Lc, Bc };
+}
+function textoProjecao(){
+  const p = projecao(); if (!p) return '';
+  const f1 = x => pct(x * 100), lead = p.Lc >= p.Bc, quem = lead ? 'Flávio' : 'Lula';
+  const dif = Math.abs(p.Lc - p.Bc), pr = p.rem > 0 ? 0.5 + dif / (2 * p.rem) : null;
+  const milhoes = p.rem >= 1e6 ? (p.rem / 1e6).toFixed(1).replace('.', ',') + ' milhões' : nf.format(Math.round(p.rem / 1000) * 1000);
+  return '<p class="meta proj" title="Estimativa feita com a apuração de hoje e o resultado do 1º turno. Não é resultado oficial."><b>Projeção pelo 1º turno (estimativa):</b> Lula ' + f1(p.L) + ' · Flávio ' + f1(1 - p.L) +
+    (f1(p.min) === f1(p.max) ? '' : ' <span>(Lula entre ' + f1(p.min) + ' e ' + f1(p.max) + ')</span>') + ' · faltam cerca de ' + milhoes + ' de votos válidos' +
+    (pr == null ? '' : (pr > 1 ? ' · ' + quem + ' não consegue mais virar' : ' · ' + quem + ' precisa de ' + Math.ceil(pr * 100 - 1e-6) + '% do que falta para virar')) + '</p>';
+}
 function hero(){
   const el = document.getElementById('hero');
   const br = D && (regiao ? agregar(REGIOES[regiao].map(uf => D.pres.uf[uf])) : D.pres.br);
@@ -543,6 +591,7 @@ function hero(){
     '<p class="meta">' + nf.format(br.st) + ' de ' + nf.format(br.ts) + ' seções</p></div>' + (b ? lado(b, tot, 'r') : '') + '</div>' +
     '<div class="stack" role="img" aria-label="Divisão dos votos válidos">' + stackOrd.map(c => '<b style="width:' + (tot ? c.v / tot * 100 : 0).toFixed(3) + '%;background:' + c.cor + '"></b>').join('') + '</div>' +
     (outros.length ? '<p class="others">' + outros.map(c => '<span><i style="background:' + c.cor + '"></i>' + tc(c.nome) + ' ' + pct(tot ? c.v / tot * 100 : 0) + '</span>').join('') + '</p>' : '') +
+    (regiao ? '' : textoProjecao()) +
     '<p class="meta hfoot">' + (regiao ? 'Região ' + regiao : (DEMO ? 'Brasil' : 'Brasil e exterior')) + ' · ' + nf.format(tot) + ' votos válidos' + (br.ger ? ' · arquivo do TSE gerado em ' + br.ger : '') + '</p>';
 }
 
@@ -667,6 +716,7 @@ async function atualizar(){
     const novo = await carregarTSE(turno);
     if (!novo.pres.br){ throw new Error('nacional indisponível'); }
     D = novo; agora = new Date(); banner.hidden = !novo.falhas;
+    if (turno === 2 && !PRI) carregarPrimeiro();
     if (novo.falhas) banner.textContent = novo.falhas + ' arquivo(s) não puderam ser lidos agora: ' + novo.lista.join(', ') + '. Os demais estão atualizados.';
   } catch (err){
     banner.hidden = false;
