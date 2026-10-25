@@ -169,16 +169,16 @@ h1{font-size:clamp(26px,3.4vw,40px)}
 /* ---- v4: sem quadrado de foco, regiões, YouTube ---- */
 #map path{outline:none; vector-effect:non-scaling-stroke}
 #map path.dim{opacity:.16}
-#map text{font-size:calc(13px*var(--z,1)); stroke-width:calc(3px*var(--z,1))}
+#map text{font-size:calc(15px*var(--z,1)); stroke-width:calc(3px*var(--z,1))}
 #map text.sm{font-size:calc(8px*var(--z,1))}
 #map circle{r:calc(3px*var(--z,1)); stroke-width:calc(1.5px*var(--z,1))}
-#map text.pc{font-size:calc(14px*var(--z,1)); font-weight:800; fill:var(--fg); stroke-width:calc(2.6px*var(--z,1)); font-variant-numeric:tabular-nums}
+#map text.pc{font-size:calc(19px*var(--z,1)); font-weight:800; fill:var(--fg); stroke-width:calc(2.6px*var(--z,1)); font-variant-numeric:tabular-nums}
 #map text.pc.sm{font-size:calc(8.5px*var(--z,1))}
 #map text.pc.dim{opacity:.2}
 #map text.mar{text-anchor:start}
 #map text.ext{pointer-events:auto; cursor:pointer; outline:none}
 #map text.ext.sel{text-decoration:underline}
-#map tspan.pc{font-size:1.05em; font-weight:800; fill:var(--fg)}
+#map tspan.pc{font-size:1.27em; font-weight:800; fill:var(--fg)}
 #map line.lead{stroke:var(--muted); stroke-width:1; vector-effect:non-scaling-stroke; opacity:.7; pointer-events:none}
 #map line.lead.dim{opacity:.15}
 #map text.dim,#map circle.dim{opacity:.2}
@@ -449,7 +449,8 @@ function ordenar(un){ return [...un.votos].sort((a, b) => b.v - a.v); }
 
 /* ---------- MAPA ---------- */
 /* estados pequenos do litoral: o rótulo vai para o mar (x,y), com uma linha ligando ao estado */
-const MAR = { RN: [614,162], PB: [614,181], PE: [614,200], AL: [614,219], SE: [614,238], ES: [538,392] }, linhaEl = {};
+const MAR = { RN: [614,150], PB: [614,172], PE: [614,194], AL: [614,216], SE: [614,238], ES: [540,392], RJ: [536,448], DF: [578,330] }, linhaEl = {};
+const posDot = (uf, z) => MAR[uf] ? [GEO.states[uf].cx, GEO.states[uf].cy] : [GEO.states[uf].cx - 16 * z, GEO.states[uf].cy - 7.5 * z];
 const svg = document.getElementById('map'), NS = 'http://www.w3.org/2000/svg', pathEl = {}, lblEl = {}, dotEl = {}, pcEl = {}, BB = {};
 function bbox(d){ const n = d.match(/-?\d+\.?\d*/g).map(Number); let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9; for (let i = 0; i + 1 < n.length; i += 2){ x0 = Math.min(x0, n[i]); x1 = Math.max(x1, n[i]); y0 = Math.min(y0, n[i+1]); y1 = Math.max(y1, n[i+1]); } return { x0, y0, x1, y1 }; }
 function montarMapa(){
@@ -463,16 +464,16 @@ function montarMapa(){
     p.addEventListener('pointerleave', () => { tip.hidden = true; });
     g.appendChild(p); pathEl[uf] = p;
     const mar = MAR[uf], t = document.createElementNS(NS, 'text'); t.setAttribute('x', mar ? mar[0] : st.cx); t.setAttribute('y', mar ? mar[1] : st.cy); t.textContent = uf;
-    if (uf === 'DF') t.classList.add('sm'); gl.appendChild(t); lblEl[uf] = t; BB[uf] = bbox(st.d);
+    t.setAttribute('dy', mar ? '0' : '-0.5em'); gl.appendChild(t); lblEl[uf] = t; BB[uf] = bbox(st.d);
     if (mar){
       t.classList.add('mar');
       const ln = document.createElementNS(NS, 'line'); ln.setAttribute('x1', st.cx); ln.setAttribute('y1', st.cy); ln.setAttribute('x2', mar[0] - 2); ln.setAttribute('y2', mar[1]); ln.classList.add('lead'); gl.insertBefore(ln, gl.firstChild); linhaEl[uf] = ln;
       const q = document.createElementNS(NS, 'tspan'); q.setAttribute('dx', '0.35em'); q.classList.add('pc'); t.appendChild(q); pcEl[uf] = q;
     } else {
-      const q = document.createElementNS(NS, 'text'); q.setAttribute('x', st.cx); q.setAttribute('y', st.cy); q.setAttribute('dy', '1.15em'); q.classList.add('pc'); if (uf === 'DF') q.classList.add('sm'); gl.appendChild(q); pcEl[uf] = q;
+      const q = document.createElementNS(NS, 'text'); q.setAttribute('x', st.cx); q.setAttribute('y', st.cy); q.setAttribute('dy', '0.55em'); q.classList.add('pc'); gl.appendChild(q); pcEl[uf] = q;
     }
     if (GOV_UFS.includes(uf)){
-      const c = document.createElementNS(NS, 'circle'); c.setAttribute('cx', st.cx); c.setAttribute('cy', MAR[uf] ? st.cy : st.cy - (uf === 'DF' ? 7 : 11)); c.setAttribute('r', 3); gl.appendChild(c); dotEl[uf] = c;
+      const c = document.createElementNS(NS, 'circle'); const pd = posDot(uf, 1); c.setAttribute('cx', pd[0]); c.setAttribute('cy', pd[1]); c.setAttribute('r', 3); gl.appendChild(c); dotEl[uf] = c;
     }
   });
 }
@@ -589,7 +590,7 @@ const escala = v => Math.min((svg.clientWidth || 600) / v[2], (svg.clientHeight 
 function aplicarVB(v){
   vbAtual = v; svg.setAttribute('viewBox', v.map(n => n.toFixed(1)).join(' '));
   const z = escala([0, 0, 660, 616]) / escala(v); svg.style.setProperty('--z', z.toFixed(3));
-  for (const uf in dotEl) dotEl[uf].setAttribute('cy', (GEO.states[uf].cy + (MAR[uf] ? 0 : (uf === 'DF' ? -7 : -11)) * z).toFixed(1));
+  for (const uf in dotEl){ const pd = posDot(uf, z); dotEl[uf].setAttribute('cx', pd[0].toFixed(1)); dotEl[uf].setAttribute('cy', pd[1].toFixed(1)); }
 }
 function zoomPara(alvo){
   if (vbAnim) cancelAnimationFrame(vbAnim);
@@ -604,7 +605,7 @@ function vbRegiao(){
   let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
   REGIOES[regiao].forEach(uf => { const b = BB[uf]; x0 = Math.min(x0, b.x0); y0 = Math.min(y0, b.y0); x1 = Math.max(x1, b.x1); y1 = Math.max(y1, b.y1); });
   const mar = REGIOES[regiao].filter(uf => MAR[uf]);
-  if (mar.length){ const zr = Math.max(x1 - x0, y1 - y0) * 1.2 / 616; x1 = Math.max(x1, 614 + 48 * zr); y0 = Math.min(y0, Math.min(...mar.map(uf => MAR[uf][1])) - 12 * zr); y1 = Math.max(y1, Math.max(...mar.map(uf => MAR[uf][1])) + 12 * zr); }
+  if (mar.length){ const zr = Math.max(x1 - x0, y1 - y0) * 1.2 / 616; x1 = Math.max(x1, Math.max(...mar.map(uf => MAR[uf][0])) + 62 * zr); y0 = Math.min(y0, Math.min(...mar.map(uf => MAR[uf][1])) - 12 * zr); y1 = Math.max(y1, Math.max(...mar.map(uf => MAR[uf][1])) + 12 * zr); }
   const w = x1 - x0, h = y1 - y0, p = Math.max(w, h) * 0.08;
   return [x0 - p, y0 - p, w + 2 * p, h + 2 * p];
 }
