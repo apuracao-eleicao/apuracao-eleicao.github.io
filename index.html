@@ -182,8 +182,9 @@ h1{font-size:clamp(26px,3.4vw,40px)}
 #map line.lead{stroke:var(--muted); stroke-width:1; vector-effect:non-scaling-stroke; opacity:.7; pointer-events:none}
 #map line.lead.dim{opacity:.15}
 #map text.dim,#map circle.dim{opacity:.2}
-.regs{display:flex; flex-wrap:wrap; gap:6px; padding:0 0 8px}
-.btn.sm{padding:4px 10px; font-size:13px}
+.regs{display:flex; flex-wrap:wrap; gap:5px; padding:0 0 8px}
+.btn.sm{padding:5px 8px; font-size:14px; white-space:nowrap}
+.btn.sm .rp{font-weight:800; font-variant-numeric:tabular-nums; margin-left:2px}
 .radio{position:relative}
 .pop{position:absolute; right:0; top:calc(100% + 8px); z-index:40; width:min(340px,90vw); background:var(--panel); border:1px solid var(--fg); border-radius:8px; padding:12px; box-shadow:0 8px 24px rgb(0 0 0 / .3)}
 .pop textarea{display:block; resize:vertical; width:100%; font:inherit; font-size:14px; padding:7px 9px; border:1px solid var(--line); border-radius:6px; background:var(--bg); color:var(--fg)}
@@ -609,10 +610,19 @@ function vbRegiao(){
   const w = x1 - x0, h = y1 - y0, p = Math.max(w, h) * 0.08;
   return [x0 - p, y0 - p, w + 2 * p, h + 2 * p];
 }
+function pctRegiao(n){
+  if (!D || !D.pres) return '';
+  const un = n === 'Brasil' ? D.pres.br : agregar(REGIOES[n].map(uf => D.pres.uf[uf]));
+  if (!un || !un.ts) return '';
+  return ' <span class="rp">– ' + (un.f >= 0.9999 ? '100%' : Math.floor(un.f * 100) + '%') + '</span>';
+}
+function atualizarRegs(){
+  document.querySelectorAll('#regs [data-reg]').forEach(b => { const n = b.dataset.reg || 'Brasil'; b.innerHTML = n + pctRegiao(n); });
+}
 function montarRegs(){
   document.getElementById('regs').innerHTML = ['Brasil'].concat(Object.keys(REGIOES)).map(n => {
     const v = n === 'Brasil' ? '' : n, on = (n === 'Brasil' && !regiao) || n === regiao;
-    return '<button class="btn sm" type="button" data-reg="' + v + '" aria-pressed="' + on + '">' + n + '</button>';
+    return '<button class="btn sm" type="button" data-reg="' + v + '" aria-pressed="' + on + '">' + n + pctRegiao(n) + '</button>';
   }).join('');
 }
 function setRegiao(r){
@@ -633,7 +643,7 @@ function legenda(){
 
 function desenhar(){
   const st = (panel.querySelector('.list') || {}).scrollTop || 0;
-  hero(); pintar(); painel();
+  hero(); pintar(); painel(); atualizarRegs();
   const l = panel.querySelector('.list'); if (l) l.scrollTop = st;
   const br = D && D.pres.br, fim = br && br.f >= 0.9999, espera = br && br.st === 0;
   const live = document.getElementById('live');
