@@ -1,3 +1,5 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Apuração 2026</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -205,6 +207,7 @@ h1{font-size:clamp(26px,3.4vw,40px)}
 .ad .slot{display:flex; align-items:center; justify-content:center; width:100%; height:100%}
 .ad .slot a{display:flex; align-items:center; justify-content:center; width:100%; height:100%}
 .ad img{max-width:100%; max-height:100%; object-fit:contain}
+.ad .slot img{height:calc(100% - 12px)}
 .ad .adtag{position:absolute; top:3px; left:8px; font-size:10px; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); z-index:1}
 .ad .vazio{font-size:13px; color:var(--muted); border:1px dashed var(--line); border-radius:6px; padding:6px 16px}
 
@@ -272,7 +275,7 @@ h1{font-size:clamp(26px,3.4vw,40px)}
   <main class="grid">
     <section class="mapcard">
       <div class="regs" id="regs" role="group" aria-label="Filtrar por região"></div>
-      <svg id="map" viewBox="0 0 660 616" role="group" aria-label="Mapa do Brasil. Cor mostra quem lidera para presidente em cada estado."></svg>
+      <svg id="map" viewBox="0 0 704 616" role="group" aria-label="Mapa do Brasil. Cor mostra quem lidera para presidente em cada estado."></svg>
       <div class="legend" id="legend"></div>
       <div class="ytcard" id="ytcard" hidden><button class="ytx" id="ytClose" type="button" aria-label="Parar e fechar o player">×</button><div id="ytp"></div></div>
     </section>
@@ -586,11 +589,11 @@ panel.addEventListener('click', e => {
   const b = e.target.closest('[data-act]'); if (!b) return;
   if (b.dataset.act === 'back') selecionar(null); else if (b.dataset.act === 'uf') selecionar(b.dataset.uf);
 });
-let vbAtual = [0, 0, 660, 616], vbAnim = null;
+let vbAtual = [0, 0, 704, 616], vbAnim = null;
 const escala = v => Math.min((svg.clientWidth || 600) / v[2], (svg.clientHeight || 616) / v[3]);
 function aplicarVB(v){
   vbAtual = v; svg.setAttribute('viewBox', v.map(n => n.toFixed(1)).join(' '));
-  const z = escala([0, 0, 660, 616]) / escala(v); svg.style.setProperty('--z', z.toFixed(3));
+  const z = escala([0, 0, 704, 616]) / escala(v); svg.style.setProperty('--z', z.toFixed(3));
   for (const uf in dotEl){ const pd = posDot(uf, z); dotEl[uf].setAttribute('cx', pd[0].toFixed(1)); dotEl[uf].setAttribute('cy', pd[1].toFixed(1)); }
 }
 function zoomPara(alvo){
@@ -602,7 +605,7 @@ function zoomPara(alvo){
   vbAnim = requestAnimationFrame(passo);
 }
 function vbRegiao(){
-  if (!regiao) return [0, 0, 660, 616];
+  if (!regiao) return [0, 0, 704, 616];
   let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
   REGIOES[regiao].forEach(uf => { const b = BB[uf]; x0 = Math.min(x0, b.x0); y0 = Math.min(y0, b.y0); x1 = Math.max(x1, b.x1); y1 = Math.max(y1, b.y1); });
   const mar = REGIOES[regiao].filter(uf => MAR[uf]);
@@ -832,12 +835,12 @@ rVol.addEventListener('input', () => {
 /* ---------- PUBLICIDADE ----------
    Coloque as imagens no repositório (ex.: pasta anuncios/) e liste aqui. Vários anúncios alternam sozinhos.
    Exemplo: [{ img: 'anuncios/banner1.png', href: 'https://site-do-anunciante.com', alt: 'Nome do anunciante' }] */
-const ANUNCIOS = [];
+const ANUNCIOS = [{ img: 'anuncios/folgado.svg', alt: 'Folgado Camisaria', fundo: '#F5EDDD' }];
 const ANUNCIO_MS = 12000;
 function montarAnuncio(){
   const slot = document.getElementById('adSlot'); let i = 0;
   if (!ANUNCIOS.length){ slot.innerHTML = '<span class="vazio">Espaço para publicidade · anuncie aqui</span>'; return; }
-  const mostrar = () => { const a = ANUNCIOS[i++ % ANUNCIOS.length]; slot.innerHTML = '<a href="' + a.href + '" target="_blank" rel="noopener sponsored"><img src="' + a.img + '" alt="' + (a.alt || 'Publicidade') + '"></a>'; };
+  const mostrar = () => { const a = ANUNCIOS[i++ % ANUNCIOS.length]; const im = '<img src="' + a.img + '" alt="' + (a.alt || 'Publicidade') + '"' + (a.fundo ? ' style="background:' + a.fundo + ';padding:6px 22px;border-radius:8px;box-sizing:border-box"' : '') + '>'; slot.innerHTML = a.href ? '<a href="' + a.href + '" target="_blank" rel="noopener sponsored">' + im + '</a>' : im; };
   mostrar(); if (ANUNCIOS.length > 1) setInterval(mostrar, ANUNCIO_MS);
 }
 montarAnuncio();
