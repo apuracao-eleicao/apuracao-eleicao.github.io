@@ -71,6 +71,8 @@ h1{font-family:var(--display); font-weight:700; font-size:clamp(34px,6vw,52px); 
 .side .pc small{font-size:.45em; font-weight:600}
 .side .vt{color:var(--muted); font-size:14px; font-variant-numeric:tabular-nums}
 .side.r{text-align:right}
+.elt{display:inline-block; vertical-align:middle; font-family:var(--body); font-size:.42em; font-weight:800; letter-spacing:.08em; padding:3px 8px; border-radius:4px; background:var(--cor); color:#fff; margin-left:6px}
+.vitoria{margin:6px 0 0; font-weight:800; font-size:15px; color:var(--fg)}
 .mid{text-align:center}
 .mid .big{font-family:var(--display); font-weight:700; font-size:clamp(34px,5vw,48px); line-height:1; font-variant-numeric:tabular-nums}
 .mid .big small{font-size:.5em; color:var(--muted)}
@@ -536,9 +538,9 @@ function dica(e, uf){
 }
 
 /* ---------- PLACAR NACIONAL ---------- */
-function lado(c, tot, cls){
+function lado(c, tot, cls, vence){
   const p = tot ? c.v / tot * 100 : 0;
-  return '<div class="side ' + cls + '" style="--cor:' + c.cor + '"><div class="nm">' + tc(c.nome) + '</div>' +
+  return '<div class="side ' + cls + (vence ? ' win' : '') + '" style="--cor:' + c.cor + '"><div class="nm">' + tc(c.nome) + (vence ? ' <span class="elt">Eleito</span>' : '') + '</div>' +
     '<div class="pc">' + pct(p, 2).replace('%', '') + '<small>%</small></div><div class="vt">' + nf.format(c.v) + ' votos · ' + (c.partido || '') + '</div></div>';
 }
 /* Projeção: para cada estado (e exterior), votos que faltam = (1 - seções apuradas) x votos válidos do 1º turno x ritmo de comparecimento;
@@ -567,6 +569,19 @@ function projecao(){
   const vals = [proj(Lp), proj(Lh)];
   return { L: proj(Lm), min: Math.min(...vals), max: Math.max(...vals), rem, Lc, Bc };
 }
+/* Eleito: (1) oficial, quando o TSE marca o candidato como eleito; (2) matemático, quando a diferença é maior que 1,5x os votos que ainda faltam (margem de segurança sobre a estimativa) */
+function vencedor(br){
+  if (turno !== 2 || !br) return null;
+  const of = br.votos.find(c => c.eleito);
+  if (of) return { c: of, tipo: 'oficial' };
+  if (br.f < 0.6) return null;
+  const p = projecao(); let rem, Lc, Bc;
+  if (p){ rem = p.rem; Lc = p.Lc; Bc = p.Bc; }
+  else { const L = br.votos.find(isLula), B = br.votos.find(isBolso); if (!L || !B) return null; Lc = L.v; Bc = B.v; rem = (Lc + Bc) * (1 - br.f) / br.f; }
+  const dif = Math.abs(Lc - Bc);
+  if (dif > 1.5 * rem && dif > 0) return { c: br.votos.find(x => (Lc > Bc ? isLula(x) : isBolso(x))), tipo: 'matematico' };
+  return null;
+}
 function textoProjecao(){
   const p = projecao(); if (!p) return '';
   const f1 = x => pct(x * 100), lead = p.Lc >= p.Bc, quem = lead ? 'Flávio' : 'Lula';
@@ -585,10 +600,13 @@ function hero(){
   if (L && B){ a = L; b = B; } else { a = ord[0]; b = ord[1] || ord[0]; }
   const stackOrd = [...br.votos].sort((x, y) => (isLula(y) - isLula(x)) || (isBolso(x) - isBolso(y)) || (y.v - x.v));
   const outros = br.votos.filter(c => c !== a && c !== b).sort((x, y) => y.v - x.v);
+  const vit = vencedor(br);
   el.innerHTML =
-    '<div class="duel">' + (a ? lado(a, tot, 'l') : '') +
+    '<div class="duel">' + (a ? lado(a, tot, 'l', vit && vit.c === a) : '') +
     '<div class="mid"><p class="eyebrow">' + (regiao || 'Brasil') + ' · apurado</p><div class="big">' + pct(br.f * 100, 2).replace('%', '') + '<small>%</small></div>' +
-    '<p class="meta">' + nf.format(br.st) + ' de ' + nf.format(br.ts) + ' seções</p></div>' + (b ? lado(b, tot, 'r') : '') + '</div>' +
+    '<p class="meta">' + nf.format(br.st) + ' de ' + nf.format(br.ts) + ' seções</p>' +
+    (vit ? '<p class="vitoria">\u2714 ' + tc(vit.c.nome).split(' ')[vit.c.nome.toLowerCase().includes('bolsonaro') ? 1 : 0] + (vit.tipo === 'oficial' ? ' eleito (TSE)' : ' matematicamente eleito') + '</p>' : '') +
+    '</div>' + (b ? lado(b, tot, 'r', vit && vit.c === b) : '') + '</div>' +
     '<div class="stack" role="img" aria-label="Divisão dos votos válidos">' + stackOrd.map(c => '<b style="width:' + (tot ? c.v / tot * 100 : 0).toFixed(3) + '%;background:' + c.cor + '"></b>').join('') + '</div>' +
     (outros.length ? '<p class="others">' + outros.map(c => '<span><i style="background:' + c.cor + '"></i>' + tc(c.nome) + ' ' + pct(tot ? c.v / tot * 100 : 0) + '</span>').join('') + '</p>' : '') +
     (regiao ? '' : textoProjecao()) +
